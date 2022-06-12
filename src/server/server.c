@@ -11,7 +11,7 @@ int bind()			与某个端口绑定
 int listen()		开始监听端口
 int accept()		等待/接受客户端的连接请求
 
-gcc .\server.c -o server.exe -lwsock32
+gcc server.c -o server.exe -lwsock32
 */
 
 int main() {
