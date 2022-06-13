@@ -1,0 +1,8 @@
+all: client server
+client:
+	gcc ./src/client.c -o ./bin/client.exe -lwsock32
+server:
+	gcc ./src/server.c -o ./bin/server.exe -lwsock32
+clean:
+	rm ./bin/client.exe
+	rm ./bin/server.exe
