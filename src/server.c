@@ -39,13 +39,17 @@ int getFileListS(char* list) {
 }
 
 int sendFileS(int clnt_sock, char* filename) {
-    sendFile(clnt_sock, filename, "../runtime/serverFile/");
+    if (sendFile(clnt_sock, filename, "../runtime/serverFile/")) {
+        printf("[sendFileS] 发送文件失败");
+        return -1;
+    }
     return 0;
 }
 
 int getFileS(int clnt_sock, char* filename) {
-    if (getAndSaveFile(clnt_sock, filename, "../runtime/serverFile/") != 0) {
-        printf("111");
+    if (getFile(clnt_sock, filename, "../runtime/serverFile/") != 0) {
+        printf("%s\n", "[getFileS] 接收文件失败");
+        return -1;
     }
     return 0;
 }
@@ -114,8 +118,10 @@ int main() {
                 continue;
             }
 
+            printf("[getFile] 发送文件 %s\n", param);
+
             // 发送文件流
-            if(sendFileS(clnt_sock, param) == -1) {
+            if (sendFileS(clnt_sock, param) == -1) {
                 printf("%s\n", "[getfile] 发送文件流失败");
                 continue;
             };
@@ -130,8 +136,10 @@ int main() {
                 continue;
             }
 
+            printf("[sendFile] 接收文件 %s\n", param);
+
             // 接收文件流
-            if(getFileS(clnt_sock, param) == -1){
+            if (getFileS(clnt_sock, param) == -1) {
                 printf("%s\n", "[sendFile] 接收文件流失败");
                 continue;
             }
@@ -151,7 +159,7 @@ int main() {
             debugPrintf("使用命令 ls", DEBUG);
 
             char buffer[BUFFER_SIZE] = {0};
-            getFileList(buffer);
+            getFileListS(buffer);
             if (sendStrLine(clnt_sock, buffer, sizeof(buffer)) == -1) {
                 printf("%s\n", "[ls] 获取文件列表失败");
                 continue;

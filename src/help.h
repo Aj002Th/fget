@@ -60,20 +60,25 @@ int sendStrLine(int clnt_sock, char* buffer, int buffer_size) {
 }
 
 // 获取并保存文件
-int getFile(int clnt_sock, char* filename, char* path) {
+int getFile(int clnt_sock, char* fname, char* path) {
     char cPath[BUFFER_SIZE] = {0};
-    sprintf(cPath, "%s%s", path, filename);
+    char buffer[BUFFER_SIZE] = {0};
+    sprintf(cPath, "%s%s", path, fname);
+    // printf("length of cPath: %d\n", sizeof(cPath));
+    // printf("length of path: %d\n", sizeof(path));
+    // printf("length of filename: %d\n", sizeof(filename));
+    // cPath[sizeof(path) + sizeof(filename) - 2] = '\0';
 
     // 打开文件，准备写入
     FILE* fp;
     if (fopen_s(&fp, cPath, "wb") != 0) {
         printf("[getFile] 文件打开失败：%s\n", cPath);
+        printf("open fail errno = %d reason = %s \n", errno, strerror(errno));
         return -1;
     }
 
     // 从服务器接收数据到 buffer 中
     // 每接收一段数据，便将其写入文件中，循环直到文件接收完并写完为止
-    char buffer[BUFFER_SIZE] = {0};
     int length = 0;
     while ((length = recv(clnt_sock, buffer, BUFFER_SIZE, 0)) > 0) {
         printf("length: %d\n", length);
@@ -90,15 +95,20 @@ int getFile(int clnt_sock, char* filename, char* path) {
 }
 
 // 发送文件
-int sendFile(int clnt_sock, char* filename, char* path) {
+int sendFile(int clnt_sock, char* fname, char* path) {
     char cPath[BUFFER_SIZE] = {0};
     char buffer[BUFFER_SIZE] = {0};
-    sprintf(cPath, "%s%s", path, filename);
+    sprintf(cPath, "%s%s", path, fname);
+    // printf("length of cPath: %d\n", sizeof(cPath));
+    // printf("length of path: %d\n", sizeof(path));
+    // printf("length of filename: %d\n", sizeof(filename));
+    // cPath[sizeof(path) + sizeof(filename) - 2] = '\0';
 
     // 打开文件并读取文件数据
     FILE* fp;
     if (fopen_s(&fp, cPath, "rb") != 0) {
-        printf("文件打开失败:%s\n", cPath);
+        printf("[sendFile] 文件打开失败:%s\n", cPath);
+        printf("open fail errno = %d reason = %s \n", errno, strerror(errno));
         return -1;
     }
 

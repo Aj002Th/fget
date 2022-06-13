@@ -67,7 +67,7 @@ int sendFileC(char* fname, int fname_size) {
     int clnt_sock = socketCoon();
 
     // 向 server 发送 cmd
-    char buffer[BUFFER_SIZE] = "getFile";
+    char buffer[BUFFER_SIZE] = "sendFile";
     sendStrLine(clnt_sock, buffer, sizeof(buffer));
     memset(buffer, 0, BUFFER_SIZE);
 
@@ -79,6 +79,8 @@ int sendFileC(char* fname, int fname_size) {
 
     // 向 server 发送文件流
     sendFile(clnt_sock, fname, "../runtime/clientFile/");
+
+    closesocket(clnt_sock);
     return 0;
 }
 
@@ -92,16 +94,17 @@ int getFileC(char* fname, int fname_size) {
 
     // 向 server 发送 fname
     if (send(clnt_sock, fname, fname_size, 0) < 0) {
-        printf("[getAndSaveFileC] 发送文件名失败");
+        printf("[getFileC] 发送文件名失败");
         return -1;
     }
 
     // 接收 server 发送的文件流
     if (getFile(clnt_sock, fname, "../runtime/clientFile/") != 0) {
-        printf("[getAndSaveFileC] 接收文件失败");
+        printf("[getFileC] 接收文件失败");
         return -1;
     }
 
+    closesocket(clnt_sock);
     return 0;
 }
 
@@ -117,7 +120,7 @@ int getFileListC() {
     int recvMsgNum = recv(clnt_sock, recvMsgData, BUFFER_SIZE, 0);
     if (recvMsgNum > 0) {
         recvMsgData[recvMsgNum] = '\0';
-        printf("server 的回应: %s\n", recvMsgData);
+        printf("文件列表: %s\n", recvMsgData);
     } else {
         printf("没有接收到 server 的消息");
         closesocket(clnt_sock);
@@ -152,7 +155,7 @@ int main() {
             scanf("%s", param);
             debugPrintf("getFile 参数为", DEBUG);
             debugPrintf(param, DEBUG);
-            int ret = getAndSaveFileC(param);
+            int ret = getFileC(param, sizeof(param));
             if (ret == -1) {
                 printf("%s\n", "getFile 失败");
             }
