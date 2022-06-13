@@ -2,10 +2,8 @@
 #include <string.h>
 #include <windows.h>
 #include <winsock2.h>
+#include "help.h"
 #pragma comment(lib, "ws2_32.lib")
-
-#define BUFFER_SIZE 1024
-#define DEBUG 1
 
 /*
 client
@@ -16,43 +14,6 @@ int connect() 		连接到服务器
 编译
 gcc client.c -o client.exe -lwsock32
 */
-
-// 初始化
-int socketInit() {
-    // 初始化 socket 库
-    WSADATA wsd;
-    WORD socketVersion = MAKEWORD(2, 2);
-    if (WSAStartup(socketVersion, &wsd) != 0) {
-        printf("socket 库初始化失败");
-        exit(0);
-    }
-    return 0;
-}
-
-int welcome() {
-    printf("%s\n", "  _____  __       ___________           .__   ");
-    printf("%s\n", "_/ ____\\/  |______\\__    ___/___   ____ |  |  ");
-    printf("%s\n", "\\   __\\\\   __\\____ \\|    | /  _ \\ /  _ \\|  |  ");
-    printf("%s\n", " |  |   |  | |  |_> >    |(  <_> |  <_> )  |__");
-    printf("%s\n", " |__|   |__| |   __/|____| \\____/ \\____/|____/");
-    printf("%s\n", "             |__|                             ");
-
-    printf("%s\n", "启动成功");
-}
-
-// 结束清理
-int socketClean() {
-    WSACleanup();
-    return 0;
-}
-
-// debug 日志
-int debugPrintf(char* msg) {
-    if (DEBUG) {
-        printf("debug: %s\n", msg);
-    }
-    return 0;
-}
 
 // 建立 tcp 连接
 int socketCoon() {
@@ -81,28 +42,77 @@ int socketCoon() {
 }
 
 // 业务函数
-int sendMsg(char* msg) {
+int ping() {
     int clnt_sock = socketCoon();
-    // 向 server 发送 cmd 信息
-    char sendData[255] = "sendMsg";
-    send(clnt_sock, sendData, sizeof(sendData), 0);
 
-    // 接收 server 发送的 cmd 信息回应
-    char recvCmdData[255];
-    int recvCmdNum = recv(clnt_sock, recvCmdData, BUFFER_SIZE, 0);
-    if (recvCmdNum > 0) {
-        recvCmdData[recvCmdNum] = '\0';
-        printf("server 的 cmd 回应: %s\n", recvCmdData);
-    } else {
-        printf("没有接收到 server 的 cmd 回应");
+    // 向 server 发送 cmd
+    char buffer[BUFFER_SIZE] = "ping";
+    sendStrLine(clnt_sock, buffer, sizeof(buffer));
+    memset(buffer, 0, BUFFER_SIZE);
+
+    // 接收 server 发送的 pong
+    char recvMsgData[BUFFER_SIZE];
+    if (getStrLine(clnt_sock, buffer) == -1) {
+        printf("没有接收到 server 的消息");
         closesocket(clnt_sock);
-        return 0;
+        return -1;
+    }
+    printf("%s\n", buffer);
+
+    closesocket(clnt_sock);
+    return 0;
+}
+
+int sendFileC(char* fname, int fname_size) {
+    int clnt_sock = socketCoon();
+
+    // 向 server 发送 cmd
+    char buffer[BUFFER_SIZE] = "getFile";
+    sendStrLine(clnt_sock, buffer, sizeof(buffer));
+    memset(buffer, 0, BUFFER_SIZE);
+
+    // 向 server 发送 fname
+    if (send(clnt_sock, fname, fname_size, 0) < 0) {
+        printf("[getAndSaveFileC] 发送文件名失败");
+        return -1;
     }
 
-    // 向 server 发送 msg 信息
-    send(clnt_sock, msg, sizeof(msg), 0);
+    // 向 server 发送文件流
+    sendFile(clnt_sock, fname, "../runtime/clientFile/");
+    return 0;
+}
 
-    // 接收 server 发送的 msg 成功接收信息
+int getFileC(char* fname, int fname_size) {
+    int clnt_sock = socketCoon();
+
+    // 向 server 发送 cmd
+    char buffer[BUFFER_SIZE] = "getFile";
+    sendStrLine(clnt_sock, buffer, sizeof(buffer));
+    memset(buffer, 0, BUFFER_SIZE);
+
+    // 向 server 发送 fname
+    if (send(clnt_sock, fname, fname_size, 0) < 0) {
+        printf("[getAndSaveFileC] 发送文件名失败");
+        return -1;
+    }
+
+    // 接收 server 发送的文件流
+    if (getFile(clnt_sock, fname, "../runtime/clientFile/") != 0) {
+        printf("[getAndSaveFileC] 接收文件失败");
+        return -1;
+    }
+
+    return 0;
+}
+
+int getFileListC() {
+    int clnt_sock = socketCoon();
+
+    // 向 server 发送 cmd 信息
+    char sendData[255] = "ls";
+    send(clnt_sock, sendData, sizeof(sendData), 0);
+
+    // 接收 server 发送的 文件列表
     char recvMsgData[BUFFER_SIZE];
     int recvMsgNum = recv(clnt_sock, recvMsgData, BUFFER_SIZE, 0);
     if (recvMsgNum > 0) {
@@ -114,35 +124,6 @@ int sendMsg(char* msg) {
         return -1;
     }
 
-    closesocket(clnt_sock);
-    return 0;
-}
-
-int sendFile(char* path) {
-    return 0;
-}
-
-int getFile(char* path) {
-    return 0;
-}
-
-int getFileList() {
-    int clnt_sock = socketCoon();
-    // 向 server 发送 cmd 信息
-    char sendData[255] = "sendMsg";
-    send(clnt_sock, sendData, sizeof(sendData), 0);
-
-    // 接收 server 发送的 cmd[ls] 信息回应
-    char recvCmdData[255];
-    int recvCmdNum = recv(clnt_sock, recvCmdData, BUFFER_SIZE, 0);
-    if (recvCmdNum > 0) {
-        recvCmdData[recvCmdNum] = '\0';
-        printf("server 的 cmd 回应: %s\n", recvCmdData);
-    } else {
-        printf("没有接收到 server 的 cmd 回应");
-        closesocket(clnt_sock);
-        return -1;
-    }
     return 0;
 }
 
@@ -150,7 +131,7 @@ int help() {
     printf("用法：\n");
     printf("1. getFile [filename]\n");
     printf("2. sendFile [filename]\n");
-    printf("3. sendMsg [message]\n");
+    printf("3. ping\n");
     printf("4. ls\n");
     printf("5. quit\n");
     printf("6. help\n");
@@ -167,43 +148,40 @@ int main() {
         char param[255];
         scanf("%s", cmd);
         if (strcmp(cmd, "getFile") == 0) {
-            debugPrintf("使用命令 getFile [filename]");
+            debugPrintf("使用命令 getFile [filename]", DEBUG);
             scanf("%s", param);
-            debugPrintf("getFile 参数为");
-            debugPrintf(param);
-            int ret = getFile(param);
+            debugPrintf("getFile 参数为", DEBUG);
+            debugPrintf(param, DEBUG);
+            int ret = getAndSaveFileC(param);
             if (ret == -1) {
                 printf("%s\n", "getFile 失败");
             }
         } else if (strcmp(cmd, "sendFile") == 0) {
-            debugPrintf("使用命令 sendFile [filename]");
+            debugPrintf("使用命令 sendFile [filename]", DEBUG);
             scanf("%s", param);
-            debugPrintf("sendFile 参数为");
-            debugPrintf(param);
-            int ret = sendFile(param);
+            debugPrintf("sendFile 参数为", DEBUG);
+            debugPrintf(param, DEBUG);
+            int ret = sendFileC(param, sizeof(param));
             if (ret == -1) {
                 printf("%s\n", "sendFile 失败");
             }
-        } else if (strcmp(cmd, "sendMsg") == 0) {
-            debugPrintf("使用命令 sendMsg [message]");
-            scanf("%s", param);  // 消息有空格怎么办,先不管了
-            debugPrintf("sendMsg 参数为");
-            debugPrintf(param);
-            int ret = sendMsg(param);
+        } else if (strcmp(cmd, "ping") == 0) {
+            debugPrintf("使用命令 ping", DEBUG);
+            int ret = ping();
             if (ret == -1) {
                 printf("%s\n", "sendMsg 失败");
             }
         } else if (strcmp(cmd, "ls") == 0) {
-            debugPrintf("使用命令 ls");
-            int ret = getFileList();
+            debugPrintf("使用命令 ls", DEBUG);
+            int ret = getFileListC();
             if (ret == -1) {
                 printf("%s\n", "ls 失败");
             }
         } else if (strcmp(cmd, "quit") == 0) {
-            debugPrintf("使用命令 quit");
+            debugPrintf("使用命令 quit", DEBUG);
             break;
         } else if (strcmp(cmd, "help") == 0) {
-            debugPrintf("使用命令 help");
+            debugPrintf("使用命令 help", DEBUG);
             help();
         } else {
             printf("%s\n", "输入无效命令");
@@ -211,6 +189,7 @@ int main() {
             help();
         }
     }
+
     socketClean();
     return 0;
 }

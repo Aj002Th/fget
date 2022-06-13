@@ -3,3 +3,6 @@
 .idea/
 
 bin/
+
+runtime/clientFile/*.txt
+runtime/serverFile/*.txt

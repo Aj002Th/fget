@@ -1,10 +1,12 @@
+#include <direct.h>
+#include <io.h>
 #include <stdio.h>
 #include <windows.h>
 #include <winsock2.h>
+#include "help.h"
 #pragma comment(lib, "ws2_32.lib")
 
-#define BUFFER_SIZE 1024
-#define DEBUG 1
+#define MAX_LEN 4096
 
 /*
 server
@@ -17,80 +19,34 @@ int accept()		等待/接受客户端的连接请求
 gcc server.c -o server.exe -lwsock32
 */
 
-// 初始化
-int socketInit() {
-    // 初始化 socket 库
-    WSADATA wsd;
-    WORD socketVersion = MAKEWORD(2, 2);
-    if (WSAStartup(socketVersion, &wsd) != 0) {
-        printf("socket 库初始化失败");
+int getFileListS(char* list) {
+    long file;
+    struct _finddata_t find;
+    _chdir("../runtime/serverFile");
+    if ((file = _findfirst("*.*", &find)) == -1L) {
+        printf("空白!\n");
         exit(0);
     }
-    return 0;
-}
-
-int welcome() {
-    printf("%s\n", "  _____  __       ___________           .__   ");
-    printf("%s\n", "_/ ____\\/  |______\\__    ___/___   ____ |  |  ");
-    printf("%s\n", "\\   __\\\\   __\\____ \\|    | /  _ \\ /  _ \\|  |  ");
-    printf("%s\n", " |  |   |  | |  |_> >    |(  <_> |  <_> )  |__");
-    printf("%s\n", " |__|   |__| |   __/|____| \\____/ \\____/|____/");
-    printf("%s\n", "             |__|                             ");
-
-    printf("%s\n", "启动成功");
-}
-
-// 结束清理
-int socketClean() {
-    WSACleanup();
-    return 0;
-}
-
-// debug 日志
-int debugPrintf(char* msg) {
-    if (DEBUG) {
-        printf("debug: %s\n", msg);
+    printf("%s\n", find.name);
+    while (_findnext(file, &find) == 0) {
+        printf("%s\n", find.name);
+        if (strcmp(find.name, ".") != 0 && strcmp(find.name, "..") != 0)
+            strcat(list, find.name);
+        strcat(list, "\n");
     }
+    _findclose(file);
     return 0;
 }
 
-// 获取一行文字
-int getStrLine(int clnt_sock, char* msg) {
-    int num = recv(clnt_sock, msg, BUFFER_SIZE, 0);
-    if (num <= 0) {
-        printf("%s\n", "[getStrLine] 没有接收到 client 消息");
-        return -1;
+int sendFileS(int clnt_sock, char* filename) {
+    sendFile(clnt_sock, filename, "../runtime/serverFile/");
+    return 0;
+}
+
+int getFileS(int clnt_sock, char* filename) {
+    if (getAndSaveFile(clnt_sock, filename, "../runtime/serverFile/") != 0) {
+        printf("111");
     }
-
-    // 打印显示
-    msg[num] = '\0';
-    debugPrintf("接收 client 信息:");
-    debugPrintf(msg);
-    return 0;
-}
-
-// 发送一行文字
-int sendStrLine(int clnt_sock, char* msg, int msg_size) {
-    int num = send(clnt_sock, msg, msg_size, 0);
-    if (num <= 0) {
-        printf("%s\n", "[sendStrLine] 没有成功发送 server 消息");
-        return -1;
-    }
-
-    // 打印显示
-    msg[num] = '\0';
-    debugPrintf("发送信息:");
-    debugPrintf(msg);
-    return 0;
-}
-
-// 获取并保存文件
-int getAndSaveFile(char* filename) {
-    return 0;
-}
-
-// 发送文件
-int sendFile(char* filename) {
     return 0;
 }
 
@@ -147,42 +103,59 @@ int main() {
             printf("获取 cmd 失败");
             continue;
         }
-        char msg[255] = "[cmd] 成功接收数据";
-        if (sendStrLine(clnt_sock, msg, sizeof(msg)) == -1) {
-            printf("[cmd] 发送消息确认应答失败");
-            continue;
-        }
 
         // 进入不同的服务
         if (strcmp(cmd, "getFile") == 0) {
-            debugPrintf("使用命令 getFile [filename]");
-        }
+            debugPrintf("使用命令 getFile [filename]", DEBUG);
 
-        if (strcmp(cmd, "sendFile") == 0) {
-            debugPrintf("使用命令 sendFile [filename]");
-        }
-
-        if (strcmp(cmd, "sendMsg") == 0) {
-            // 接收消息
-            debugPrintf("使用命令 sendMsg [message]");
+            // 获取文件名
             if (getStrLine(clnt_sock, param) == -1) {
-                printf("%s\n", "[getFile] 获取 param 失败");
+                printf("%s\n", "[getFile] 获取 fname 失败");
                 continue;
             }
 
-            // 展示消息
-            printf("接收 client 的 msg: %s\n", param);
+            // 发送文件流
+            if(sendFileS(clnt_sock, param) == -1) {
+                printf("%s\n", "[getfile] 发送文件流失败");
+                continue;
+            };
+        }
 
-            // 表示接收成功
-            char msg[255] = "sendMsg: 数据成功接收";
-            if (sendStrLine(clnt_sock, msg, sizeof(msg)) == -1) {
-                printf("%s\n", "[getFile] 发送消息确认应答失败");
+        if (strcmp(cmd, "sendFile") == 0) {
+            debugPrintf("使用命令 sendFile [filename]", DEBUG);
+
+            // 获取文件名
+            if (getStrLine(clnt_sock, param) == -1) {
+                printf("%s\n", "[sendFile] 获取 fname 失败");
+                continue;
+            }
+
+            // 接收文件流
+            if(getFileS(clnt_sock, param) == -1){
+                printf("%s\n", "[sendFile] 接收文件流失败");
+                continue;
+            }
+        }
+
+        if (strcmp(cmd, "ping") == 0) {
+            debugPrintf("使用命令 ping", DEBUG);
+
+            char buffer[BUFFER_SIZE] = "pong";
+            if (sendStrLine(clnt_sock, buffer, sizeof(buffer)) == -1) {
+                printf("%s\n", "[ping] pong 发送失败");
                 continue;
             }
         }
 
         if (strcmp(cmd, "ls") == 0) {
-            debugPrintf("使用命令 ls");
+            debugPrintf("使用命令 ls", DEBUG);
+
+            char buffer[BUFFER_SIZE] = {0};
+            getFileList(buffer);
+            if (sendStrLine(clnt_sock, buffer, sizeof(buffer)) == -1) {
+                printf("%s\n", "[ls] 获取文件列表失败");
+                continue;
+            }
         }
 
         // 关闭连接
