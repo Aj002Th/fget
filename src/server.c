@@ -56,6 +56,7 @@ int getFileS(int clnt_sock, char* filename) {
 
 int main() {
     socketInit();
+    welcome();
 
     // 建立一个 socket
     int serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

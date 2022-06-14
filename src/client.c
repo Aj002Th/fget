@@ -74,11 +74,16 @@ int sendFileC(char* fname, int fname_size) {
     // 向 server 发送 fname
     if (send(clnt_sock, fname, fname_size, 0) < 0) {
         printf("[getAndSaveFileC] 发送文件名失败");
+        closesocket(clnt_sock);
         return -1;
     }
 
     // 向 server 发送文件流
-    sendFile(clnt_sock, fname, "../runtime/clientFile/");
+    if (sendFile(clnt_sock, fname, "../runtime/clientFile/") < 0) {
+        printf("[getAndSaveFileC] 发送文件流失败");
+        closesocket(clnt_sock);
+        return -1;
+    }
 
     closesocket(clnt_sock);
     return 0;
